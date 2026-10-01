@@ -73,7 +73,6 @@ export function filterMounts(mounts: Mount[], filters: Filters): Mount[] {
     const haystack = fold(
       [
         variant.name,
-        mount.nickname,
         SPECIES_LABELS[variant.species],
         SEX_LABELS[mount.sex],
         STATUS_LABELS[mount.status],
@@ -101,6 +100,29 @@ const STATUS_ORDER: Record<ReproductiveStatus, number> = {
   senile: 3,
 }
 
+export type StockGroup = {
+  key: string
+  mounts: Mount[]
+}
+
+export function groupMounts(mounts: Mount[]): StockGroup[] {
+  const groups = new Map<string, Mount[]>()
+  const order: string[] = []
+
+  for (const mount of mounts) {
+    const key = [mount.catalogId, mount.sex, mount.status, String(mount.level)].join('\u0000')
+    const existing = groups.get(key)
+    if (existing) {
+      existing.push(mount)
+    } else {
+      groups.set(key, [mount])
+      order.push(key)
+    }
+  }
+
+  return order.map((key) => ({ key, mounts: groups.get(key) ?? [] }))
+}
+
 export function sortMounts(mounts: Mount[]): Mount[] {
   return [...mounts].sort((left, right) => {
     const leftVariant = getVariant(left.catalogId)
@@ -123,6 +145,6 @@ export function sortMounts(mounts: Mount[]): Mount[] {
     const statusDelta = STATUS_ORDER[left.status] - STATUS_ORDER[right.status]
     if (statusDelta) return statusDelta
 
-    return left.nickname.localeCompare(right.nickname, 'fr')
+    return left.level - right.level
   })
 }

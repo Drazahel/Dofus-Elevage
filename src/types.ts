@@ -13,6 +13,7 @@ export type CatalogVariant = {
   name: string
   generation: number | null
   breedable: boolean
+  icon: string
 }
 
 export type Mount = {
@@ -36,6 +37,12 @@ export const SPECIES_LABELS: Record<Species, string> = {
   dragodinde: 'Dragodinde',
   muldo: 'Muldo',
   volkorne: 'Volkorne',
+}
+
+export const SPECIES_IMAGES: Record<Species, string> = {
+  dragodinde: '/species/dragodinde.png',
+  muldo: '/species/muldo.png',
+  volkorne: '/species/volkorne.png',
 }
 
 export const SEX_LABELS: Record<Sex, string> = {

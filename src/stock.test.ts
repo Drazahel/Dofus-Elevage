@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CATALOG } from './data/catalog.ts'
-import { filterMounts, summarize } from './stock.ts'
+import { filterMounts, groupMounts, summarize } from './stock.ts'
 import { parseStock, readStock, serializeStock, writeStock } from './storage.ts'
 import { EMPTY_FILTERS, type Mount } from './types.ts'
 
@@ -54,9 +54,22 @@ describe('filtrage', () => {
     expect(filterMounts(stock, { ...EMPTY_FILTERS, generation: 1 })).toEqual([amande, dore])
   })
 
-  it('recherche le nom et le surnom sans tenir compte des accents', () => {
-    expect(filterMounts(stock, { ...EMPTY_FILTERS, query: 'emeraude' })).toEqual([prune])
-    expect(filterMounts(stock, { ...EMPTY_FILTERS, query: 'lina' })).toEqual([amande])
+  it('recherche le nom sans tenir compte des accents', () => {
+    expect(filterMounts(stock, { ...EMPTY_FILTERS, query: 'prune' })).toEqual([prune])
+    expect(filterMounts(stock, { ...EMPTY_FILTERS, query: 'amande' })).toEqual([amande])
+  })
+})
+
+describe('regroupement', () => {
+  it('rassemble les montures identiques et laisse les autres à part', () => {
+    const copy = { ...dore, id: 'm4' }
+    const otherLevel = { ...dore, id: 'm5', level: 40 }
+    const groups = groupMounts([dore, amande, copy, otherLevel])
+    expect(groups.map((group) => group.mounts.map((mount) => mount.id))).toEqual([
+      ['m2', 'm4'],
+      ['m1'],
+      ['m5'],
+    ])
   })
 })
 

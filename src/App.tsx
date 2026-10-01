@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CATALOG, getVariant, variantsForSpecies } from './data/catalog.ts'
-import { filterMounts, sortMounts, summarize, createMounts } from './stock.ts'
+import { CATALOG, getVariant, variantImage, variantsForSpecies } from './data/catalog.ts'
+import { filterMounts, groupMounts, sortMounts, summarize, createMounts } from './stock.ts'
 import { parseStock, readStock, serializeStock, writeStock } from './storage.ts'
 import {
   EMPTY_FILTERS,
   SEX_LABELS,
-  SEXES,
   SPECIES,
+  SPECIES_IMAGES,
   SPECIES_LABELS,
   STATUS_LABELS,
   STATUSES,
@@ -23,7 +23,6 @@ type Draft = {
   sex: Sex
   status: ReproductiveStatus
   level: string
-  nickname: string
   count: string
 }
 
@@ -33,7 +32,6 @@ const DEFAULT_DRAFT: Draft = {
   sex: 'female',
   status: 'raising',
   level: '1',
-  nickname: '',
   count: '1',
 }
 
@@ -45,7 +43,6 @@ function draftFromMount(mount: Mount): Draft {
     sex: mount.sex,
     status: mount.status,
     level: String(mount.level),
-    nickname: mount.nickname,
     count: '1',
   }
 }
@@ -64,8 +61,9 @@ function generationLabel(generation: number | null): string {
 export default function App() {
   const [mounts, setMounts] = useState<Mount[]>(() => readStock(localStorage))
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
+  const [formGeneration, setFormGeneration] = useState<number | null>(null)
   const [draft, setDraft] = useState<Draft>(DEFAULT_DRAFT)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingIds, setEditingIds] = useState<string[]>([])
   const [formError, setFormError] = useState('')
   const [notice, setNotice] = useState('')
 
@@ -78,7 +76,13 @@ export default function App() {
     () => sortMounts(filterMounts(mounts, filters)),
     [mounts, filters],
   )
+  const groups = useMemo(() => groupMounts(visible), [visible])
+  const editing = editingIds.length > 0
   const variants = variantsForSpecies(draft.species)
+  const generationVariants =
+    formGeneration == null
+      ? []
+      : variants.filter((variant) => variant.generation === formGeneration)
   const selectedVariant = getVariant(draft.catalogId)
 
   function updateDraft(patch: Partial<Draft>) {
@@ -88,15 +92,31 @@ export default function App() {
 
   function changeSpecies(species: Species) {
     const nextVariants = variantsForSpecies(species)
+    const pool =
+      formGeneration == null
+        ? nextVariants
+        : nextVariants.filter((variant) => variant.generation === formGeneration)
+    const currentStillValid = pool.some((variant) => variant.id === draft.catalogId)
     updateDraft({
       species,
-      catalogId: nextVariants[0]?.id ?? '',
+      catalogId: currentStillValid ? draft.catalogId : (pool[0]?.id ?? ''),
     })
+    setFilters((current) => ({ ...current, species }))
+  }
+
+  function selectFormGeneration(generation: number | null) {
+    setFormGeneration(generation)
+    if (generation == null) return
+    const matches = variants.filter((variant) => variant.generation === generation)
+    if (!matches.some((variant) => variant.id === draft.catalogId)) {
+      updateDraft({ catalogId: matches[0]?.id ?? draft.catalogId })
+    }
   }
 
   function resetForm() {
     setDraft(DEFAULT_DRAFT)
-    setEditingId(null)
+    setEditingIds([])
+    setFormGeneration(null)
     setFormError('')
   }
 
@@ -117,16 +137,18 @@ export default function App() {
       sex: draft.sex,
       status: draft.status,
       level,
-      nickname: draft.nickname,
+      nickname: '',
     }
 
-    if (editingId) {
+    if (editingIds.length > 0) {
+      const ids = new Set(editingIds)
+      const nickname = ''
       setMounts((current) =>
-        current.map((mount) =>
-          mount.id === editingId ? { ...mount, ...payload, nickname: payload.nickname.trim() } : mount,
-        ),
+        current.map((mount) => (ids.has(mount.id) ? { ...mount, ...payload, nickname } : mount)),
       )
-      setNotice('Monture mise à jour.')
+      setNotice(
+        editingIds.length > 1 ? `${editingIds.length} montures mises à jour.` : 'Monture mise à jour.',
+      )
       resetForm()
       return
     }
@@ -139,24 +161,27 @@ export default function App() {
 
     setMounts((current) => [...current, ...createMounts(payload, count)])
     setNotice(count > 1 ? `${count} montures ajoutées.` : 'Monture ajoutée.')
-    setDraft((current) => ({ ...current, nickname: '', count: '1' }))
+    setDraft((current) => ({ ...current, count: '1' }))
   }
 
-  function startEdit(mount: Mount) {
-    setEditingId(mount.id)
+  function startEdit(ids: string[], mount: Mount) {
+    setEditingIds(ids)
+    setFormGeneration(null)
     setDraft(draftFromMount(mount))
     setFormError('')
     setNotice('')
     document.getElementById('stock-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  function removeMount(mount: Mount) {
-    const variant = getVariant(mount.catalogId)
-    const label = variant ? `${SPECIES_LABELS[variant.species]} ${variant.name}` : 'cette monture'
-    if (!window.confirm(`Retirer ${label} du stock ?`)) return
-    setMounts((current) => current.filter((entry) => entry.id !== mount.id))
-    if (editingId === mount.id) resetForm()
-    setNotice('Monture retirée du stock.')
+  function removeGroup(ids: string[], label: string) {
+    const count = ids.length
+    const question =
+      count > 1 ? `Retirer ces ${count} ${label} du stock ?` : `Retirer ${label} du stock ?`
+    if (!window.confirm(question)) return
+    const removed = new Set(ids)
+    setMounts((current) => current.filter((entry) => !removed.has(entry.id)))
+    if (editingIds.some((id) => removed.has(id))) resetForm()
+    setNotice(count > 1 ? `${count} montures retirées du stock.` : 'Monture retirée du stock.')
   }
 
   function exportStock() {
@@ -233,58 +258,115 @@ export default function App() {
 
       <form id="stock-form" className="panel" onSubmit={submitForm}>
         <div className="panel-heading">
-          <h2>{editingId ? 'Modifier une monture' : 'Ajouter au stock'}</h2>
-          {editingId ? (
+          <h2>
+            {editing
+              ? editingIds.length > 1
+                ? `Modifier ${editingIds.length} montures`
+                : 'Modifier une monture'
+              : 'Ajouter au stock'}
+          </h2>
+          {editing ? (
             <button type="button" className="ghost" onClick={resetForm}>
               Annuler
             </button>
           ) : null}
         </div>
-        <div className="form-grid">
+        <div className="species-cards" role="group" aria-label="Espèce">
+          {SPECIES.map((species) => {
+            const selected = draft.species === species
+            return (
+              <button
+                key={species}
+                type="button"
+                className={selected ? 'species-card chosen' : 'species-card'}
+                aria-pressed={selected}
+                onClick={() => changeSpecies(species)}
+              >
+                <img src={SPECIES_IMAGES[species]} alt="" />
+                <span className="species-card-label">
+                  <strong>{SPECIES_LABELS[species]}</strong>
+                  <small>{summary.bySpecies[species]} en stock</small>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+        {filters.species === 'all' ? (
+          <p className="hint">Choisir une espèce filtre aussi le stock affiché.</p>
+        ) : (
+          <button
+            type="button"
+            className="ghost species-clear"
+            onClick={() => setFilters((current) => ({ ...current, species: 'all' }))}
+          >
+            Voir tout le stock
+          </button>
+        )}
+        <div className="form-row">
           <label>
-            Espèce
+            Génération
             <select
-              value={draft.species}
-              onChange={(event) => changeSpecies(event.target.value as Species)}
+              value={formGeneration ?? ''}
+              onChange={(event) =>
+                selectFormGeneration(event.target.value === '' ? null : Number(event.target.value))
+              }
             >
-              {SPECIES.map((species) => (
-                <option key={species} value={species}>
-                  {SPECIES_LABELS[species]}
+              <option value="">Toutes</option>
+              {Array.from({ length: 10 }, (_, index) => index + 1).map((generation) => (
+                <option key={generation} value={generation}>
+                  Génération {generation}
                 </option>
               ))}
             </select>
           </label>
-          <label>
-            Variante
-            <select
-              value={draft.catalogId}
-              onChange={(event) => updateDraft({ catalogId: event.target.value })}
-            >
-              {groupVariants(variants).map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.variants.map((variant) => (
-                    <option key={variant.id} value={variant.id}>
-                      {variant.name}
-                      {variant.breedable ? '' : ' (non élevable)'}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
-          <label>
-            Sexe
-            <select
-              value={draft.sex}
-              onChange={(event) => updateDraft({ sex: event.target.value as Sex })}
-            >
-              {SEXES.map((sex) => (
-                <option key={sex} value={sex}>
-                  {SEX_LABELS[sex]}
-                </option>
-              ))}
-            </select>
-          </label>
+        </div>
+        {formGeneration == null ? (
+          <div className="form-grid">
+            <label>
+              Variante
+              <select
+                value={draft.catalogId}
+                onChange={(event) => updateDraft({ catalogId: event.target.value })}
+              >
+                {groupVariants(variants).map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.variants.map((variant) => (
+                      <option key={variant.id} value={variant.id}>
+                        {variant.name}
+                        {variant.breedable ? '' : ' (non élevable)'}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : generationVariants.length === 0 ? (
+          <p className="hint">Aucune variante pour cette génération.</p>
+        ) : (
+          <div className="variant-cards" role="group" aria-label="Variante">
+            {generationVariants.map((variant) => {
+              const selected = draft.catalogId === variant.id
+              return (
+                <button
+                  key={variant.id}
+                  type="button"
+                  className={selected ? 'variant-card chosen' : 'variant-card'}
+                  aria-pressed={selected}
+                  onClick={() => updateDraft({ catalogId: variant.id })}
+                >
+                  <img src={variantImage(variant.icon)} alt="" />
+                  <span>{variant.name}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+        <div className="details-row">
+          <SexChoice
+            value={draft.sex}
+            onChange={(sex) => updateDraft({ sex })}
+          />
           <label>
             État
             <select
@@ -308,16 +390,7 @@ export default function App() {
               onChange={(event) => updateDraft({ level: event.target.value })}
             />
           </label>
-          <label>
-            Surnom
-            <input
-              value={draft.nickname}
-              maxLength={40}
-              placeholder="Optionnel"
-              onChange={(event) => updateDraft({ nickname: event.target.value })}
-            />
-          </label>
-          {editingId ? null : (
+          {editing ? null : (
             <label>
               Quantité
               <input
@@ -333,7 +406,7 @@ export default function App() {
         ) : null}
         {formError ? <p className="error">{formError}</p> : null}
         <div className="actions">
-          <button type="submit">{editingId ? 'Enregistrer' : 'Ajouter'}</button>
+          <button type="submit">{editing ? 'Enregistrer' : 'Ajouter'}</button>
         </div>
       </form>
 
@@ -347,41 +420,15 @@ export default function App() {
           </p>
         </div>
         <div className="filters">
-          <label>
-            Espèce
-            <select
-              value={filters.species}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  species: event.target.value as Filters['species'],
-                }))
-              }
-            >
-              <option value="all">Toutes</option>
-              {SPECIES.map((species) => (
-                <option key={species} value={species}>
-                  {SPECIES_LABELS[species]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Sexe
-            <select
-              value={filters.sex}
-              onChange={(event) =>
-                setFilters((current) => ({ ...current, sex: event.target.value as Filters['sex'] }))
-              }
-            >
-              <option value="all">Tous</option>
-              {SEXES.map((sex) => (
-                <option key={sex} value={sex}>
-                  {SEX_LABELS[sex]}
-                </option>
-              ))}
-            </select>
-          </label>
+          <SexChoice
+            value={filters.sex === 'all' ? null : filters.sex}
+            onChange={(sex) =>
+              setFilters((current) => ({
+                ...current,
+                sex: current.sex === sex ? 'all' : sex,
+              }))
+            }
+          />
           <label>
             État
             <select
@@ -425,7 +472,7 @@ export default function App() {
             Recherche
             <input
               value={filters.query}
-              placeholder="Nom ou surnom"
+              placeholder="Nom"
               onChange={(event) =>
                 setFilters((current) => ({ ...current, query: event.target.value }))
               }
@@ -444,33 +491,43 @@ export default function App() {
             <table>
               <thead>
                 <tr>
+                  <th>Qté</th>
                   <th>Espèce</th>
                   <th>Variante</th>
                   <th>Génération</th>
                   <th>Sexe</th>
                   <th>État</th>
                   <th>Niveau</th>
-                  <th>Surnom</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {visible.map((mount) => {
-                  const variant = getVariant(mount.catalogId)
+                {groups.map((group) => {
+                  const mount = group.mounts[0]
+                  const ids = group.mounts.map((entry) => entry.id)
+                  const variant = mount ? getVariant(mount.catalogId) : undefined
+                  const label = variant
+                    ? `${SPECIES_LABELS[variant.species]} ${variant.name}`
+                    : 'ces montures'
+                  const isEditing = ids.some((id) => editingIds.includes(id))
                   return (
-                    <tr key={mount.id} className={mount.id === editingId ? 'editing' : undefined}>
+                    <tr key={group.key} className={isEditing ? 'editing' : undefined}>
+                      <td className="qty">{group.mounts.length}</td>
                       <td>{variant ? SPECIES_LABELS[variant.species] : '—'}</td>
                       <td>{variant?.name ?? 'Variante inconnue'}</td>
                       <td>{generationLabel(variant?.generation ?? null)}</td>
-                      <td>{SEX_LABELS[mount.sex]}</td>
-                      <td>{STATUS_LABELS[mount.status]}</td>
-                      <td>{mount.level}</td>
-                      <td>{mount.nickname || '—'}</td>
+                      <td>{mount ? SEX_LABELS[mount.sex] : '—'}</td>
+                      <td>{mount ? STATUS_LABELS[mount.status] : '—'}</td>
+                      <td>{mount?.level ?? '—'}</td>
                       <td className="row-actions">
-                        <button type="button" className="ghost" onClick={() => startEdit(mount)}>
+                        <button
+                          type="button"
+                          className="ghost"
+                          onClick={() => mount && startEdit(ids, mount)}
+                        >
                           Modifier
                         </button>
-                        <button type="button" className="danger" onClick={() => removeMount(mount)}>
+                        <button type="button" className="danger" onClick={() => removeGroup(ids, label)}>
                           Supprimer
                         </button>
                       </td>
@@ -503,6 +560,52 @@ export default function App() {
       </section>
       <p className="footer">{CATALOG.length} variantes au catalogue.</p>
     </div>
+  )
+}
+
+function SexChoice({ value, onChange }: { value: Sex | null; onChange: (sex: Sex) => void }) {
+  return (
+    <div className="sex-choice">
+      <span>Sexe</span>
+      <div className="sex-logos" role="group" aria-label="Sexe">
+        <button
+          type="button"
+          className={value === 'female' ? 'sex-logo female chosen' : 'sex-logo female'}
+          aria-pressed={value === 'female'}
+          aria-label="Femelle"
+          onClick={() => onChange('female')}
+        >
+          <FemaleMark />
+        </button>
+        <button
+          type="button"
+          className={value === 'male' ? 'sex-logo male chosen' : 'sex-logo male'}
+          aria-pressed={value === 'male'}
+          aria-label="Mâle"
+          onClick={() => onChange('male')}
+        >
+          <MaleMark />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function FemaleMark() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="9" r="5.2" />
+      <path d="M12 14.2V21M9.2 18.2h5.6" />
+    </svg>
+  )
+}
+
+function MaleMark() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="10" cy="14" r="5.2" />
+      <path d="M13.7 10.3 20 4M15.2 4H20v4.8" />
+    </svg>
   )
 }
 
