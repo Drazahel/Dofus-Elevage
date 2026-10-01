@@ -123,6 +123,26 @@ export function groupMounts(mounts: Mount[]): StockGroup[] {
   return order.map((key) => ({ key, mounts: groups.get(key) ?? [] }))
 }
 
+export function setSexQuantity(mounts: Mount[], catalogId: string, sex: Sex, quantity: number): Mount[] {
+  const next = Math.max(0, Math.min(99, Math.floor(quantity)))
+  const matching = mounts.filter((mount) => mount.catalogId === catalogId && mount.sex === sex)
+  if (matching.length === next) return mounts
+  const rest = mounts.filter((mount) => !(mount.catalogId === catalogId && mount.sex === sex))
+  if (next < matching.length) return [...rest, ...matching.slice(0, next)]
+  const template = matching[0]
+  const created = createMounts(
+    {
+      catalogId,
+      sex,
+      status: template?.status ?? 'fertile',
+      level: template?.level ?? 1,
+      nickname: '',
+    },
+    next - matching.length,
+  )
+  return [...rest, ...matching, ...created]
+}
+
 export function sortMounts(mounts: Mount[]): Mount[] {
   return [...mounts].sort((left, right) => {
     const leftVariant = getVariant(left.catalogId)

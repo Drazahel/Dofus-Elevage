@@ -76,3 +76,22 @@ export function readStock(storage: StorageLike, key = STORAGE_KEY): Mount[] {
 export function writeStock(storage: StorageLike, mounts: Mount[], key = STORAGE_KEY): void {
   storage.setItem(key, serializeStock(mounts))
 }
+
+export const OBTAINED_KEY = 'dofus-elevage-obtained-v1'
+
+export function readObtained(storage: StorageLike, key = OBTAINED_KEY): Set<string> {
+  const raw = storage.getItem(key)
+  if (!raw) return new Set()
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return new Set()
+  }
+  if (!Array.isArray(parsed)) return new Set()
+  return new Set(parsed.filter((id) => typeof id === 'string' && getVariant(id)))
+}
+
+export function writeObtained(storage: StorageLike, ids: Set<string>, key = OBTAINED_KEY): void {
+  storage.setItem(key, JSON.stringify([...ids]))
+}

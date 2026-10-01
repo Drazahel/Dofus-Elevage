@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { CrownToggle } from './CrownToggle.tsx'
 import { getVariant, variantImage, variantsForSpecies } from './data/catalog.ts'
 import { offspringIds, parentCouples, stockByCatalog, stockFor, type SexStock } from './genetics.ts'
 import { SPECIES, SPECIES_IMAGES, SPECIES_LABELS, type Mount, type Species } from './types.ts'
@@ -9,9 +10,20 @@ const START: Record<Species, string> = {
   volkorne: 'volkorne-roux',
 }
 
-export function GeneticsPanel({ mounts }: { mounts: Mount[] }) {
-  const [species, setSpecies] = useState<Species>('muldo')
-  const [focusId, setFocusId] = useState(START.muldo)
+export function GeneticsPanel({
+  mounts,
+  obtained,
+  focusRequest,
+  onToggleObtained,
+}: {
+  mounts: Mount[]
+  obtained: Set<string>
+  focusRequest: { id: string; token: number } | null
+  onToggleObtained: (catalogId: string) => void
+}) {
+  const requested = focusRequest ? getVariant(focusRequest.id) : undefined
+  const [species, setSpecies] = useState<Species>(requested?.species ?? 'muldo')
+  const [focusId, setFocusId] = useState(requested?.id ?? START.muldo)
   const stock = useMemo(() => stockByCatalog(mounts), [mounts])
   const focus = getVariant(focusId)
   const couples = parentCouples(focusId)
@@ -31,8 +43,14 @@ export function GeneticsPanel({ mounts }: { mounts: Mount[] }) {
     setFocusId(catalogId)
   }
 
+  useEffect(() => {
+    if (!focusRequest) return
+    openMount(focusRequest.id)
+    document.getElementById('genetics-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [focusRequest])
+
   return (
-    <section className="panel genetics">
+    <section className="panel genetics" id="genetics-panel">
       <div className="panel-heading">
         <h2>Génétique</h2>
       </div>
@@ -72,8 +90,18 @@ export function GeneticsPanel({ mounts }: { mounts: Mount[] }) {
           <>
             <p className="gene-caption">Gènes parentaux</p>
             <div className="gene-parents">
-              <GeneCard catalogId={reminder[0]} onOpen={openMount} />
-              <GeneCard catalogId={reminder[1]} onOpen={openMount} />
+              <GeneCard
+                catalogId={reminder[0]}
+                obtained={obtained.has(reminder[0])}
+                onToggleObtained={onToggleObtained}
+                onOpen={openMount}
+              />
+              <GeneCard
+                catalogId={reminder[1]}
+                obtained={obtained.has(reminder[1])}
+                onToggleObtained={onToggleObtained}
+                onOpen={openMount}
+              />
             </div>
             <div className="gene-bridge" aria-hidden="true" />
           </>
@@ -85,7 +113,14 @@ export function GeneticsPanel({ mounts }: { mounts: Mount[] }) {
           </p>
         )}
         <div className="gene-center">
-          {focus ? <GeneCard catalogId={focus.id} featured /> : null}
+          {focus ? (
+            <GeneCard
+              catalogId={focus.id}
+              featured
+              obtained={obtained.has(focus.id)}
+              onToggleObtained={onToggleObtained}
+            />
+          ) : null}
         </div>
         <p className="gene-caption">Ce qu’elle peut produire</p>
         {children.length === 0 ? (
@@ -93,7 +128,14 @@ export function GeneticsPanel({ mounts }: { mounts: Mount[] }) {
         ) : (
           <div className="gene-children">
             {children.map((catalogId) => (
-              <GeneCard key={catalogId} catalogId={catalogId} compact onOpen={openMount} />
+              <GeneCard
+                key={catalogId}
+                catalogId={catalogId}
+                compact
+                obtained={obtained.has(catalogId)}
+                onToggleObtained={onToggleObtained}
+                onOpen={openMount}
+              />
             ))}
           </div>
         )}
@@ -120,6 +162,8 @@ export function GeneticsPanel({ mounts }: { mounts: Mount[] }) {
                   catalogId={pair[0]}
                   compact
                   stock={stockFor(stock, pair[0])}
+                  obtained={obtained.has(pair[0])}
+                  onToggleObtained={onToggleObtained}
                   onOpen={openMount}
                 />
                 <span className="pair-join" aria-hidden="true">
@@ -129,6 +173,8 @@ export function GeneticsPanel({ mounts }: { mounts: Mount[] }) {
                   catalogId={pair[1]}
                   compact
                   stock={stockFor(stock, pair[1])}
+                  obtained={obtained.has(pair[1])}
+                  onToggleObtained={onToggleObtained}
                   onOpen={openMount}
                 />
               </li>
@@ -143,14 +189,18 @@ export function GeneticsPanel({ mounts }: { mounts: Mount[] }) {
 function GeneCard({
   catalogId,
   onOpen,
+  onToggleObtained,
   featured = false,
   compact = false,
+  obtained = false,
   stock,
 }: {
   catalogId: string
   onOpen?: (catalogId: string) => void
+  onToggleObtained: (catalogId: string) => void
   featured?: boolean
   compact?: boolean
+  obtained?: boolean
   stock?: SexStock
 }) {
   const variant = getVariant(catalogId)
@@ -171,21 +221,34 @@ function GeneCard({
       {stock ? <StockMarks stock={stock} /> : null}
     </>
   )
-  if (!onOpen) {
-    return <div className={className}>{body}</div>
-  }
-  return (
+  const card = onOpen ? (
     <button type="button" className={className} title={variant.name} onClick={() => onOpen(catalogId)}>
       {body}
     </button>
+  ) : (
+    <div className={className}>{body}</div>
+  )
+  return (
+    <div className="gene-slot">
+      {card}
+      <CrownToggle
+        obtained={obtained}
+        label={variant.name}
+        onToggle={() => onToggleObtained(catalogId)}
+      />
+    </div>
   )
 }
 
 function StockMarks({ stock }: { stock: SexStock }) {
   return (
     <span className="gene-stock">
-      <span className={stock.female > 0 ? 'has-female' : ''}>{stock.female} ♀</span>
-      <span className={stock.male > 0 ? 'has-male' : ''}>{stock.male} ♂</span>
+      <span>
+        {stock.female} <span className="sex-female">♀</span>
+      </span>
+      <span>
+        {stock.male} <span className="sex-male">♂</span>
+      </span>
     </span>
   )
 }

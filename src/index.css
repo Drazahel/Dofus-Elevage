@@ -566,6 +566,14 @@ button.gene-card,
   margin: 0;
 }
 
+.sex-female {
+  color: #ff8ec4;
+}
+
+.sex-male {
+  color: #7eb6ff;
+}
+
 .gene-stock {
   display: flex;
   gap: 0.55rem;
@@ -584,6 +592,171 @@ button.gene-card,
 .pair-join {
   color: #d7a441;
   font-weight: 700;
+}
+
+.stock-generation {
+  margin-top: 1.1rem;
+}
+
+.stock-generation h3 {
+  margin: 0 0 0.45rem;
+  color: #cbbba6;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.stock-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.stock-slot,
+.gene-slot {
+  position: relative;
+}
+
+button.crown {
+  position: absolute;
+  top: 0.18rem;
+  right: 0.18rem;
+  z-index: 2;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0.15rem;
+  border-radius: 999px;
+  background: rgba(12, 10, 8, 0.78);
+  color: #6a5a46;
+  border: 1px solid #5c4c38;
+}
+
+button.crown svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+button.crown.on {
+  color: #f2c14e;
+  background: #3d2e10;
+  border-color: #f2c14e;
+}
+
+button.crown.on svg {
+  fill: currentColor;
+  stroke: none;
+}
+
+.stock-slot.open {
+  z-index: 4;
+}
+
+button.stock-card {
+  width: 6.6rem;
+  padding: 0.4rem 0.35rem 0.5rem;
+  background: #1b1612;
+  color: #f6f0e6;
+  border: 1px solid #5c4c38;
+  font-weight: 500;
+}
+
+button.stock-card:not(.owned) {
+  opacity: 0.72;
+}
+
+button.stock-card.owned,
+button.stock-card[aria-pressed='true'] {
+  opacity: 1;
+  border-color: #d7a441;
+  box-shadow: inset 0 0 0 1px #d7a441;
+}
+
+button.stock-card img {
+  display: block;
+  width: 78%;
+  margin: 0 auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
+.stock-qty {
+  display: flex;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+  color: #8d7d6a;
+  font-size: 0.75rem;
+}
+
+.qty-editor {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 13rem;
+  padding: 0.7rem 0.75rem 0.8rem;
+  background: #241c16;
+  border: 1px solid #d7a441;
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.gene-jump {
+  width: 100%;
+  margin-top: 0.7rem;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.78rem;
+}
+
+.qty-editor strong {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.9rem;
+}
+
+.qty-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.qty-line.female {
+  color: #ff8ec4;
+}
+
+.qty-line.male {
+  color: #7eb6ff;
+}
+
+.qty-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.qty-controls button {
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border-radius: 999px;
+  background: #1b1612;
+  color: inherit;
+  border: 1px solid currentColor;
+}
+
+.qty-controls input {
+  width: 2.4rem;
+  margin: 0;
+  padding: 0.2rem;
+  text-align: center;
 }
 
 .footer {

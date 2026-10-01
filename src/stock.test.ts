@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CATALOG } from './data/catalog.ts'
-import { filterMounts, groupMounts, summarize } from './stock.ts'
-import { parseStock, readStock, serializeStock, writeStock } from './storage.ts'
+import { filterMounts, groupMounts, setSexQuantity, summarize } from './stock.ts'
+import { parseStock, readObtained, readStock, serializeStock, writeObtained, writeStock } from './storage.ts'
 import { EMPTY_FILTERS, type Mount } from './types.ts'
 
 const amande: Mount = {
@@ -85,6 +85,30 @@ describe('résumé', () => {
   })
 })
 
+describe('quantités', () => {
+  it('ajoute un sexe en reprenant le niveau déjà en stock', () => {
+    const next = setSexQuantity([dore], 'muldo-dore', 'male', 2)
+    const males = next.filter((mount) => mount.sex === 'male')
+    expect(males).toHaveLength(2)
+    expect(males.every((mount) => mount.level === 12 && mount.status === 'raising')).toBe(true)
+  })
+
+  it('crée une femelle neuve sans retirer les mâles', () => {
+    const next = setSexQuantity([dore], 'muldo-dore', 'female', 1)
+    expect(next.filter((mount) => mount.sex === 'male')).toEqual([dore])
+    expect(next.find((mount) => mount.sex === 'female')).toMatchObject({
+      catalogId: 'muldo-dore',
+      status: 'fertile',
+      level: 1,
+    })
+  })
+
+  it('retire le surplus d’un sexe', () => {
+    const next = setSexQuantity([dore, amande], 'muldo-dore', 'male', 0)
+    expect(next).toEqual([amande])
+  })
+})
+
 describe('stockage', () => {
   it('relit un export valide', () => {
     const result = parseStock(serializeStock([amande]))
@@ -118,5 +142,19 @@ describe('stockage', () => {
     expect(readStock(storage)).toEqual([dore])
     storage.setItem('dofus-elevage-stock-v1', '{')
     expect(readStock(storage)).toEqual([])
+  })
+
+  it('retient les montures déjà obtenues', () => {
+    const memory = new Map<string, string>()
+    const storage = {
+      getItem: (key: string) => memory.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        memory.set(key, value)
+      },
+    }
+    writeObtained(storage, new Set(['muldo-dore', 'inconnu']))
+    expect(readObtained(storage)).toEqual(new Set(['muldo-dore']))
+    storage.setItem('dofus-elevage-obtained-v1', '{')
+    expect(readObtained(storage)).toEqual(new Set())
   })
 })
