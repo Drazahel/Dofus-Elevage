@@ -370,6 +370,222 @@ td.qty {
   font-weight: 700;
 }
 
+.view-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+}
+
+.gene-picker {
+  max-width: 22rem;
+  margin-top: 0.9rem;
+}
+
+.gene-tree {
+  margin-top: 1.4rem;
+}
+
+.gene-caption {
+  margin: 0.8rem 0 0.45rem;
+  text-align: center;
+  color: #cbbba6;
+  font-size: 0.82rem;
+}
+
+.gene-parents {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 8.5rem));
+  justify-content: center;
+  gap: 3.5rem;
+}
+
+.gene-bridge {
+  height: 2.1rem;
+  max-width: 20.5rem;
+  margin: 0 auto;
+  position: relative;
+}
+
+.gene-bridge::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18%;
+  right: 18%;
+  height: 2px;
+  background: #d7a441;
+}
+
+.gene-bridge::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 1px);
+  width: 2px;
+  background: #d7a441;
+}
+
+.gene-center {
+  display: flex;
+  justify-content: center;
+}
+
+.gene-children {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+}
+
+button.gene-card,
+.gene-card {
+  width: 7.2rem;
+  padding: 0.45rem 0.4rem 0.55rem;
+  background: #1b1612;
+  color: #f6f0e6;
+  border: 1px solid #5c4c38;
+  border-radius: 10px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.gene-card.compact {
+  width: 6.2rem;
+}
+
+.gene-card.featured {
+  width: 9.2rem;
+  border-color: #d7a441;
+  box-shadow: inset 0 0 0 1px #d7a441, 0 0 0 1px #d7a441;
+}
+
+.gene-card img {
+  display: block;
+  width: 72%;
+  margin: 0 auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
+.gene-gen {
+  display: inline-block;
+  margin-top: 0.15rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: #2a241c;
+  color: #e7d7c0;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+}
+
+.gene-name {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gene-possible {
+  margin-top: 1.6rem;
+  padding-top: 1rem;
+  border-top: 1px solid #3a3126;
+}
+
+.gene-possible h3 {
+  margin: 0 0 0.8rem;
+  font-size: 1rem;
+}
+
+.pair-focus {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: fit-content;
+  margin: 0 auto 1rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #6d5b40;
+  border-radius: 10px;
+  background: #1b1612;
+}
+
+.pair-focus img {
+  width: 3rem;
+  height: 3rem;
+  object-fit: contain;
+}
+
+.pair-focus div {
+  display: grid;
+}
+
+.pair-focus span {
+  color: #cbbba6;
+  font-size: 0.78rem;
+}
+
+.pair-list {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+  max-width: 42rem;
+}
+
+.pair-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 10px;
+  background: #1b1612;
+  border: 1px solid #3a3126;
+}
+
+.pair-list .gene-card {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 2.6rem 1fr;
+  grid-template-rows: auto auto auto;
+  column-gap: 0.45rem;
+  align-items: center;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 0.2rem;
+}
+
+.pair-list .gene-card img {
+  grid-row: 1 / span 3;
+  width: 2.6rem;
+  margin: 0;
+}
+
+.gene-stock {
+  display: flex;
+  gap: 0.55rem;
+  color: #8d7d6a;
+  font-size: 0.75rem;
+}
+
+.gene-stock .has-female {
+  color: #ff8ec4;
+}
+
+.gene-stock .has-male {
+  color: #7eb6ff;
+}
+
+.pair-join {
+  color: #d7a441;
+  font-weight: 700;
+}
+
 .footer {
   margin: 0.4rem 0 0;
   font-size: 0.85rem;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { CATALOG, getVariant, variantImage, variantsForSpecies } from './data/catalog.ts'
+import { GeneticsPanel } from './GeneticsPanel.tsx'
 import { filterMounts, groupMounts, sortMounts, summarize, createMounts } from './stock.ts'
 import { parseStock, readStock, serializeStock, writeStock } from './storage.ts'
 import {
@@ -66,6 +67,7 @@ export default function App() {
   const [editingIds, setEditingIds] = useState<string[]>([])
   const [formError, setFormError] = useState('')
   const [notice, setNotice] = useState('')
+  const [view, setView] = useState<'stock' | 'genetics'>('genetics')
 
   useEffect(() => {
     writeStock(localStorage, mounts)
@@ -256,6 +258,22 @@ export default function App() {
         </article>
       </section>
 
+      <nav className="view-tabs" aria-label="Sections">
+        <button type="button" className={view === 'stock' ? '' : 'ghost'} onClick={() => setView('stock')}>
+          Stock
+        </button>
+        <button
+          type="button"
+          className={view === 'genetics' ? '' : 'ghost'}
+          onClick={() => setView('genetics')}
+        >
+          Génétique
+        </button>
+      </nav>
+
+      {view === 'genetics' ? <GeneticsPanel mounts={mounts} /> : null}
+      {view === 'stock' ? (
+      <>
       <form id="stock-form" className="panel" onSubmit={submitForm}>
         <div className="panel-heading">
           <h2>
@@ -558,6 +576,8 @@ export default function App() {
         </div>
         {notice ? <p className="notice">{notice}</p> : null}
       </section>
+      </>
+      ) : null}
       <p className="footer">{CATALOG.length} variantes au catalogue.</p>
     </div>
   )
